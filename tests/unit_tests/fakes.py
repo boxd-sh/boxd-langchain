@@ -141,14 +141,20 @@ class FakeMachines:
             raise self.delete_exc
         self.deleted.append(machine_id)
 
-    def start(self, machine_id: str) -> None:
+    def start(self, machine_id: str, *, region: str | None = None) -> None:
+        del region
         self.lifecycle.append(("start", machine_id))
+        self.machines[machine_id].status = "starting"
 
-    def resume(self, machine_id: str) -> None:
+    def resume(self, machine_id: str, *, region: str | None = None) -> None:
+        del region
         self.lifecycle.append(("resume", machine_id))
+        self.machines[machine_id].status = "starting"
 
-    def wake(self, machine_id: str) -> None:
+    def wake(self, machine_id: str, *, region: str | None = None) -> None:
+        del region
         self.lifecycle.append(("wake", machine_id))
+        self.machines[machine_id].status = "starting"
 
 
 @dataclass

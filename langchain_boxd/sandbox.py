@@ -17,6 +17,7 @@ here with the boxd Python SDK:
 from __future__ import annotations
 
 import contextlib
+import logging
 import posixpath
 import shlex
 from typing import TYPE_CHECKING, Any, Self
@@ -27,6 +28,7 @@ from boxd.errors import (
     BoxdError,
     MachineAgentOutdatedError,
     MachineFileNotFoundError,
+    MachineFilesystemError,
     MachineIsADirectoryError,
     MachineNotADirectoryError,
     MachinePermissionError,
@@ -49,6 +51,8 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from types import TracebackType
 
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_WORKDIR = "/home/boxd"
 """Home directory of the ``boxd`` user on the default boxd image."""
@@ -83,6 +87,15 @@ def _combine_output(stdout: str | bytes | None, stderr: str | bytes | None) -> s
     return output
 
 
+def _is_credential_error(exc: BoxdError) -> bool:
+    # A MachinePermissionError is about a path inside the machine, not about
+    # the credential, although it subclasses PermissionDeniedError.
+    return isinstance(exc, AuthenticationError) or (
+        isinstance(exc, PermissionDeniedError)
+        and not isinstance(exc, MachineFilesystemError)
+    )
+
+
 def _is_timeout(exc: BoxdError) -> bool:
     return exc.code == _TIMEOUT_CODE or str(exc).startswith(_TIMEOUT_MESSAGE_PREFIX)
 
@@ -111,6 +124,14 @@ def _upload_error(exc: BoxdError) -> FileOperationError | str:
     if isinstance(exc, MachineFileNotFoundError):
         return FILE_NOT_FOUND
     return f"{type(exc).__name__}: {exc}"
+
+
+def _mkdir_error(output: str) -> FileOperationError | str:
+    if "Permission denied" in output:
+        return PERMISSION_DENIED
+    if "Not a directory" in output or "File exists" in output:
+        return INVALID_PATH
+    return output.strip() or "mkdir failed"
 
 
 class BoxdSandbox(BaseSandbox):
@@ -236,7 +257,8 @@ class BoxdSandbox(BaseSandbox):
 
         Raises:
             TimeoutError: The machine did not become ready in time. The
-                machine is deleted before this is raised.
+                backend tries to delete the machine before this is raised;
+                if that fails too, a warning is logged.
         """
         owns_client = client is None if close_client is None else close_client
         sdk = client if client is not None else Boxd()
@@ -261,6 +283,14 @@ class BoxdSandbox(BaseSandbox):
         except BaseException:
             try:
                 sdk.machines.delete(machine.id, region=region)
+            except BoxdError:
+                # Keep the original error. The machine's delete_after timer,
+                # if one was set, still removes it.
+                logger.warning(
+                    "Could not delete machine %s after it failed to start",
+                    machine.id,
+                    exc_info=True,
+                )
             finally:
                 if owns_client:
                     sdk.close()
@@ -354,15 +384,18 @@ class BoxdSandbox(BaseSandbox):
     def upload_files(self, files: list[tuple[str, bytes]]) -> list[FileUploadResponse]:
         """Upload files into the machine, in the same order as ``files``.
 
-        Missing parent directories are created. Each file is replaced as a
-        whole. Failures are reported per file, not raised.
+        Missing parent directories are created. Failures are reported per
+        file, not raised, except a rejected credential
+        (``AuthenticationError``, ``PermissionDeniedError``), which is raised
+        as in ``execute()``.
         """
         return [self._write_file(path, content) for path, content in files]
 
     def download_files(self, paths: list[str]) -> list[FileDownloadResponse]:
         """Download files from the machine, in the same order as ``paths``.
 
-        Failures are reported per file, not raised.
+        Failures are reported per file, not raised, except a rejected
+        credential, which is raised as in ``execute()``.
         """
         return [self._read_file(path) for path in paths]
 
@@ -406,6 +439,8 @@ class BoxdSandbox(BaseSandbox):
         except MachineAgentOutdatedError:
             return self._read_file_legacy(path)
         except BoxdError as exc:
+            if _is_credential_error(exc):
+                raise
             return FileDownloadResponse(
                 path=path, content=None, error=_download_error(exc)
             )
@@ -421,6 +456,8 @@ class BoxdSandbox(BaseSandbox):
         except MachineAgentOutdatedError:
             return self._write_file_legacy(path, content)
         except BoxdError as exc:
+            if _is_credential_error(exc):
+                raise
             return FileUploadResponse(path=path, error=_upload_error(exc))
         return FileUploadResponse(path=path, error=None)
 
@@ -436,6 +473,8 @@ class BoxdSandbox(BaseSandbox):
                 self._machine_id, path, region=self._region
             )
         except BoxdError as exc:
+            if _is_credential_error(exc):
+                raise
             quoted = shlex.quote(path)
             probe = self.execute(
                 f"if [ -d {quoted} ]; then echo dir; "
@@ -456,11 +495,13 @@ class BoxdSandbox(BaseSandbox):
         if parent and parent != "/":
             mkdir = self.execute(f"mkdir -p {shlex.quote(parent)}")
             if mkdir.exit_code != 0:
-                return FileUploadResponse(path=path, error=PERMISSION_DENIED)
+                return FileUploadResponse(path=path, error=_mkdir_error(mkdir.output))
         try:
             self._client.machines.files.upload(
                 self._machine_id, path, content, region=self._region
             )
         except BoxdError as exc:
+            if _is_credential_error(exc):
+                raise
             return FileUploadResponse(path=path, error=f"{type(exc).__name__}: {exc}")
         return FileUploadResponse(path=path, error=None)

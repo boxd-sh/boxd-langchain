@@ -148,6 +148,67 @@ def test_rejected_key_gives_clear_error(fake: FakeBoxd) -> None:
     assert fake.closed is True
 
 
+def test_region_is_passed_to_the_client(fake: FakeBoxd) -> None:
+    _provider({"BOXD_REGION": "nyc"}).get_or_create()
+    assert fake.constructed_with == [{"api_key": "k", "region": "nyc"}]  # type: ignore[attr-defined]
+
+
+def test_default_resolver_reads_dcode_workspace_environment(
+    fake: FakeBoxd, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from deepagents_code import model_config  # noqa: PLC0415
+
+    monkeypatch.delenv("BOXD_API_KEY", raising=False)
+    monkeypatch.setattr(
+        model_config,
+        "resolve_env_var",
+        {"BOXD_API_KEY": "from-workspace"}.get,
+    )
+    BoxdProvider().get_or_create()
+    assert fake.constructed_with == [{"api_key": "from-workspace"}]  # type: ignore[attr-defined]
+
+
+def test_stopped_machine_is_polled_until_it_leaves_stopped(
+    fake: FakeBoxd, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # `start` returns before the status changes; wait_until_ready would treat
+    # a "stopped" status as final, so the provider polls first.
+    monkeypatch.setattr("langchain_boxd.provider._WAKE_POLL_INTERVAL", 0)
+    machine = FakeMachine("vm-9", "my-box", "stopped")
+    fake.machines.machines["vm-9"] = machine
+    seen: list[str] = []
+    statuses = iter(["stopped", "stopped", "stopped", "starting"])
+
+    def get(machine_id: str, *, region: str | None = None) -> FakeMachine:
+        del machine_id, region
+        machine.status = next(statuses, "running")
+        seen.append(machine.status)
+        return machine
+
+    fake.machines.get = get  # type: ignore[method-assign]
+    fake.machines.start = lambda machine_id, **_: fake.machines.lifecycle.append(  # type: ignore[method-assign]
+        ("start", machine_id)
+    )
+    _provider().get_or_create(sandbox_id="vm-9")
+    assert seen == ["stopped", "stopped", "stopped", "starting"]
+    assert fake.machines.lifecycle == [
+        ("start", "vm-9"),
+        ("wait_until_ready", "vm-9"),
+    ]
+
+
+def test_machine_that_never_wakes_times_out(
+    fake: FakeBoxd, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("langchain_boxd.provider._WAKE_POLL_INTERVAL", 0)
+    monkeypatch.setattr("langchain_boxd.provider.DEFAULT_READY_TIMEOUT", 0.05)
+    fake.machines.machines["vm-9"] = FakeMachine("vm-9", "my-box", "hibernated")
+    fake.machines.wake = lambda *_a, **_k: None  # type: ignore[method-assign]
+    with pytest.raises(TimeoutError, match="did not wake up"):
+        _provider().get_or_create(sandbox_id="vm-9")
+    assert fake.closed is True
+
+
 def test_without_key_falls_back_to_sdk_discovery(fake: FakeBoxd) -> None:
     BoxdProvider(resolve_env_var=_resolver({})).get_or_create()
     assert fake.constructed_with == [{}]  # type: ignore[attr-defined]

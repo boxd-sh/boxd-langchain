@@ -109,18 +109,21 @@ restores a boxd snapshot instead of booting the default image.
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `BOXD_API_KEY` (or `DEEPAGENTS_CODE_BOXD_API_KEY`) | none | API key |
-| `BOXD_REGION` | boxd's default | region to create machines in |
+| `BOXD_REGION` (or `DEEPAGENTS_CODE_BOXD_REGION`) | boxd's default | region to create machines in |
 | `BOXD_IMAGE` | the boxd image | image for new machines |
 | `BOXD_DELETE_AFTER` | never | seconds until boxd deletes a new machine |
 
 `name`, `labels`, `image`, `delete_after`, `workdir` and `command_timeout` can
 also be set as provider params in `~/.deepagents/config.toml`. A config entry
-needs the provider's `class_path` next to its params:
+replaces what the package registers, so it repeats the provider's
+`class_path` and capabilities next to its params:
 
 ```toml
 [sandboxes.providers.boxd]
 class_path = "langchain_boxd.provider:BoxdProvider"
 working_dir = "/home/boxd"
+package = "langchain-boxd"
+supports_snapshot_name = true
 
 [sandboxes.providers.boxd.params]
 labels = { team = "ai" }
@@ -170,13 +173,16 @@ which runs the sync methods in a thread.
   image, make sure it has `bash` and `python3`, or pass `shell=None`.
 - A command that runs past its timeout is killed (boxd stops its whole process
   group) and `execute` returns exit code `124`.
-- `upload_files` creates missing parent directories and replaces each file as
-  a whole, so readers never see half a file.
+- `upload_files` creates missing parent directories. A file is replaced by a
+  rename, so readers see the old contents or the new; boxd writes in place
+  only where a rename can't work (a file with several hard links, another
+  user's file, or a directory the `boxd` user can't write to).
 - stdout and stderr are returned together: stdout, then a newline, then
   stderr.
 - `execute` returns transport errors as output with exit code `1`, so the
-  agent can see them. A rejected API key (`AuthenticationError`) or a machine
-  the key may not use (`PermissionDeniedError`) is raised instead.
+  agent can see them, and file transfers report failures per file. A rejected
+  API key (`AuthenticationError`) or a machine the key may not use
+  (`PermissionDeniedError`) is raised instead, from every method.
 - Everything else boxd offers (snapshots, forks, egress allowlists, secrets,
   ports and HTTPS URLs) is on `backend.client`, the plain boxd SDK client.
 

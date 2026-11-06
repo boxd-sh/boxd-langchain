@@ -156,6 +156,30 @@ def test_provider_create_hibernate_reattach_and_delete() -> None:
         assert _gone(client, machine_id)
 
 
+def test_provider_reattaches_stopped_machine() -> None:
+    provider = BoxdProvider()
+    backend = provider.get_or_create(
+        name=machine_name("stopped"),
+        labels=machine_labels(),
+        delete_after=SAFETY_DELETE_AFTER,
+    )
+    machine_id = backend.id
+    try:
+        backend.execute("echo kept > disk.txt")
+        backend.client.machines.stop(machine_id)
+        deadline = time.monotonic() + 120
+        while backend.client.machines.get(machine_id).status != "stopped":
+            assert time.monotonic() < deadline, "machine did not stop"
+            time.sleep(2)
+        backend.close()
+
+        again = provider.get_or_create(sandbox_id=machine_id)
+        assert again.execute("cat disk.txt").output == "kept\n"
+        again.close()
+    finally:
+        provider.delete(sandbox_id=machine_id)
+
+
 def test_provider_unknown_machine_is_not_found() -> None:
     from deepagents_code.integrations.sandbox_provider import (  # noqa: PLC0415
         SandboxNotFoundError,

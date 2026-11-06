@@ -8,6 +8,7 @@ this module needs ``deepagents-code``; ``langchain_boxd`` itself does not.
 from __future__ import annotations
 
 import os
+import time
 from collections.abc import Callable, Mapping
 from typing import NoReturn
 
@@ -31,6 +32,8 @@ DEFAULT_COMMAND_TIMEOUT = DEFAULT_TIMEOUT
 
 EnvResolver = Callable[[str], str | None]
 
+_WAKE_POLL_INTERVAL = 0.5
+
 # Machines that are asleep come back with these calls before they take commands.
 _WAKE_CALLS = {
     "stopped": "start",
@@ -39,12 +42,24 @@ _WAKE_CALLS = {
 }
 
 
-def _default_resolve_env_var(name: str) -> str | None:
+def _environ_resolve_env_var(name: str) -> str | None:
     if not name.startswith("DEEPAGENTS_CODE_"):
         prefixed = f"DEEPAGENTS_CODE_{name}"
         if prefixed in os.environ:
             return os.environ[prefixed] or None
     return os.environ.get(name) or None
+
+
+def _default_resolve_env_var(name: str) -> str | None:
+    # dcode's own resolver also sees the variables of the active workspace,
+    # which `os.environ` does not. Older deepagents-code releases lack it.
+    try:
+        from deepagents_code.model_config import (  # noqa: PLC0415
+            resolve_env_var,
+        )
+    except ImportError:
+        return _environ_resolve_env_var(name)
+    return resolve_env_var(name)
 
 
 def _resolve_int(
@@ -225,6 +240,14 @@ class BoxdProvider(SandboxProvider):
         wake = _WAKE_CALLS.get(machine.status)
         if wake is not None:
             getattr(client.machines, wake)(machine.id)
+            # wait_until_ready treats "stopped" as final, so let the status
+            # move on first.
+            deadline = time.monotonic() + DEFAULT_READY_TIMEOUT
+            while client.machines.get(machine.id).status in _WAKE_CALLS:
+                if time.monotonic() >= deadline:
+                    msg = f"machine {machine.id} did not wake up"
+                    raise TimeoutError(msg)
+                time.sleep(_WAKE_POLL_INTERVAL)
         client.machines.wait_until_ready(machine.id, timeout=DEFAULT_READY_TIMEOUT)
         return BoxdSandbox(
             machine_id=machine.id,
@@ -235,11 +258,20 @@ class BoxdProvider(SandboxProvider):
         )
 
     def _client(self) -> Boxd:
+        # Pass what the resolver finds explicitly: under dcode it can come from
+        # the workspace environment, which the SDK would not read itself.
         api_key = self._resolve_env_var("BOXD_API_KEY")
+        region = self._resolve_env_var("BOXD_REGION")
         try:
             # Without a key, Boxd() still works inside a boxd machine, where it
             # picks up that machine's own credential.
-            return Boxd(api_key=api_key) if api_key else Boxd()
+            if api_key and region:
+                return Boxd(api_key=api_key, region=region)
+            if api_key:
+                return Boxd(api_key=api_key)
+            if region:
+                return Boxd(region=region)
+            return Boxd()
         except AuthenticationError as exc:
             raise ValueError(self._auth_message(exc)) from exc
 

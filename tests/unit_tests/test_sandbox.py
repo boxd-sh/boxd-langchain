@@ -347,13 +347,25 @@ def test_legacy_upload_creates_parent_then_uses_files_stream() -> None:
     assert fake.machines.exec_calls[0]["command"] == "bash -c 'mkdir -p /tmp/a/b'"
 
 
-def test_legacy_upload_mkdir_failure() -> None:
+@pytest.mark.parametrize(
+    ("stderr", "expected"),
+    [
+        (
+            "mkdir: cannot create directory '/root/x': Permission denied",
+            "permission_denied",
+        ),
+        ("mkdir: cannot create directory '/f/x': Not a directory", "invalid_path"),
+        ("mkdir: cannot create directory '/f': File exists", "invalid_path"),
+        ("disk full", "disk full"),
+    ],
+)
+def test_legacy_upload_mkdir_failure(stderr: str, expected: str) -> None:
     fake = FakeBoxd()
     fake.machines.fs.write_exc = _outdated()
-    fake.machines.result = FakeExecResult(stderr="denied", exit_code=1)
+    fake.machines.result = FakeExecResult(stderr=stderr, exit_code=1)
     backend, _ = _backend(fake)
     [response] = backend.upload_files([("/root/x/y.txt", b"x")])
-    assert response.error == "permission_denied"
+    assert response.error == expected
 
 
 def test_legacy_download_reads_files_stream() -> None:
@@ -483,3 +495,113 @@ def test_create_failure_closes_own_client(monkeypatch: pytest.MonkeyPatch) -> No
     with pytest.raises(PermissionDeniedError):
         BoxdSandbox.create()
     assert fake.closed is True
+
+
+def test_create_keeps_original_error_when_cleanup_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    fake = FakeBoxd()
+    fake.machines.ready_exc = TimeoutError("not ready")
+    fake.machines.delete_exc = APIConnectionError("network down")
+    with pytest.raises(TimeoutError, match="not ready"):
+        BoxdSandbox.create(client=cast("Boxd", fake))
+    assert "Could not delete machine vm-1" in caplog.text
+
+
+@pytest.mark.parametrize(
+    "exc",
+    [
+        AuthenticationError("revoked", reason="invalid_api_key"),
+        PermissionDeniedError("account disabled"),
+    ],
+)
+def test_file_transfers_raise_credential_errors(exc: BoxdError) -> None:
+    backend, fake = _backend()
+    fake.machines.fs.read_exc = exc
+    fake.machines.fs.write_exc = exc
+    with pytest.raises(type(exc)):
+        backend.download_files([FILE_PATH])
+    with pytest.raises(type(exc)):
+        backend.upload_files([(FILE_PATH, b"x")])
+
+
+def test_path_permission_error_is_not_a_credential_error() -> None:
+    # MachinePermissionError subclasses PermissionDeniedError, but it is
+    # about the file, so it stays a per-file result.
+    backend, fake = _backend()
+    fake.machines.fs.read_exc = _fs_error(MachinePermissionError, "permission_denied")
+    [response] = backend.download_files([FILE_PATH])
+    assert response.error == "permission_denied"
+
+
+def test_legacy_paths_raise_credential_errors() -> None:
+    fake = FakeBoxd()
+    fake.machines.fs.read_exc = _outdated()
+    fake.machines.files = FakeFiles(
+        download_exc=AuthenticationError("revoked", reason="invalid_api_key")
+    )
+    backend, _ = _backend(fake)
+    with pytest.raises(AuthenticationError):
+        backend.download_files([FILE_PATH])
+
+
+def test_fake_calls_match_the_real_sdk_signatures() -> None:
+    """Every call the backend makes must bind to the real boxd SDK methods."""
+    import inspect  # noqa: PLC0415
+
+    from boxd.resources.fs import Fs  # noqa: PLC0415
+    from boxd.resources.machines import Files, Machines  # noqa: PLC0415
+
+    real = {
+        "exec": Machines.exec,
+        "create": Machines.create,
+        "wait_until_ready": Machines.wait_until_ready,
+        "delete": Machines.delete,
+        "read": Fs.read,
+        "write": Fs.write,
+        "upload": Files.upload,
+        "download": Files.download,
+    }
+    calls: list[tuple[str, tuple[object, ...], dict[str, object]]] = []
+
+    def recorder(name: str, result: object = None) -> object:
+        def record(*args: object, **kwargs: object) -> object:
+            calls.append((name, args, kwargs))
+            return result
+
+        return record
+
+    fake = FakeBoxd()
+    m = fake.machines
+    m.exec = recorder("exec", FakeExecResult())  # type: ignore[method-assign]
+    m.wait_until_ready = recorder("wait_until_ready")  # type: ignore[method-assign]
+    m.delete = recorder("delete")  # type: ignore[method-assign]
+    original_create = m.create
+
+    def create(*args: object, **kwargs: object) -> object:
+        calls.append(("create", args, kwargs))
+        return original_create(*args, **kwargs)  # type: ignore[arg-type]
+
+    m.create = create  # type: ignore[method-assign]
+    m.fs.read = recorder("read", b"x")  # type: ignore[method-assign]
+    m.fs.write = recorder("write")  # type: ignore[method-assign]
+    m.files.upload = recorder("upload", 1)  # type: ignore[method-assign]
+    m.files.download = recorder("download", b"x")  # type: ignore[method-assign]
+
+    with BoxdSandbox.create(
+        client=cast("Boxd", fake), name="n", labels={"a": "b"}, delete_after=60, vcpu=2
+    ) as backend:
+        backend.execute("true", timeout=5)
+        backend.upload_files([(FILE_PATH, b"x")])
+        backend.download_files([FILE_PATH])
+        m.fs.read = recorder("read_outdated")  # type: ignore[method-assign]
+        backend._read_file_legacy(FILE_PATH)
+        backend._write_file_legacy(FILE_PATH, b"x")
+
+    seen = set()
+    for name, args, kwargs in calls:
+        if name not in real:
+            continue
+        seen.add(name)
+        inspect.signature(real[name]).bind(object(), *args, **kwargs)
+    assert seen == set(real)
