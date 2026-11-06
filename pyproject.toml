@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langchain-boxd"
+description = "boxd sandbox integration for Deep Agents"
+license = { text = "MIT" }
+readme = "README.md"
+authors = [{ name = "Azin" }]
+keywords = ["deepagents", "langchain", "sandbox", "boxd", "agents", "microvm"]
+classifiers = [
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+version = "0.0.1"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "deepagents>=0.7.0,<0.8.0",
+    "boxd>=0.3.0,<0.4.0",
+]
+
+[project.entry-points."deepagents_code.sandbox_providers"]
+boxd = "langchain_boxd.provider:BoxdProvider"
+
+[tool.hatch.build.targets.wheel]
+packages = ["langchain_boxd"]
+
+[project.urls]
+Homepage = "https://boxd.sh?ref=langchain-boxd"
+Documentation = "https://docs.boxd.sh?ref=langchain-boxd"
+Repository = "https://github.com/boxd-sh/langchain-boxd"
+Issues = "https://github.com/boxd-sh/langchain-boxd/issues"
+
+[dependency-groups]
+test = [
+    "pytest>=8.3.4,<10.0.0",
+    "pytest-cov",
+    "pytest-socket",
+    "pytest-xdist",
+    "pytest-timeout>=2.3.1,<3.0.0",
+    "pytest-asyncio>=1.3.0",
+    "ruff>=0.14.0,<0.16.0",
+    "ty>=0.0.1,<1.0.0",
+    "langchain-tests>=1.1.6",
+    "langchain-anthropic>=1.0.0",
+    "deepagents-code>=0.1.19,<0.2.0",
+]
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "COM812",  # Messes with the formatter
+    "ISC001",  # Messes with the formatter
+    "ANN401",  # Dynamically typed expressions (typing.Any): **create_kwargs passthrough
+    "PLR0913",  # Too many arguments: the options are keyword-only and mirror boxd's machines.create
+]
+extend-safe-fixes = ["PLR6201"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+ignore-var-parameters = true
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.extend-per-file-ignores]
+"tests/**/*.py" = ["D", "S101", "S108", "SLF001", "PLR2004"]
+
+[tool.coverage.run]
+omit = ["tests/*"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --strict-config --durations=5"
+testpaths = ["tests"]
+markers = [
+    "requires: mark tests as requiring a specific library",
+    "compile: mark placeholder test used to compile integration tests without running them",
+    "scheduled: mark tests to run in scheduled testing",
+]
+asyncio_mode = "auto"
+filterwarnings = []
