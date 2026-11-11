@@ -1,4 +1,4 @@
-![boxd: composable computers for LangChain agents](assets/banner.png)
+![boxd: composable computers for LangChain agents](https://raw.githubusercontent.com/boxd-sh/boxd-langchain/main/assets/banner.png)
 
 # boxd-langchain
 
