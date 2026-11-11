@@ -167,26 +167,78 @@ which runs the sync methods in a thread.
 `delete_after`, `ready_timeout`, and passes anything else (`vcpu`, `memory`,
 `env`, `org`, `isolated`, `networks`, `spec`, ...) to `client.machines.create`.
 
-### Behaviour worth knowing
+### Good to know
 
 - Commands run as the `boxd` user, who has passwordless `sudo`. The default
   image has Python 3, git, Node, Docker, ripgrep and more, so the inherited
   file tools (which shell out to `python3`) work out of the box. On your own
   image, make sure it has `bash` and `python3`, or pass `shell=None`.
-- A command that runs past its timeout is killed (boxd stops its whole process
-  group) and `execute` returns exit code `124`.
-- `upload_files` creates missing parent directories. A file is replaced by a
-  rename, so readers see the old contents or the new; boxd writes in place
-  only where a rename can't work (a file with several hard links, another
-  user's file, or a directory the `boxd` user can't write to).
-- stdout and stderr are returned together: stdout, then a newline, then
-  stderr.
-- `execute` returns transport errors as output with exit code `1`, so the
-  agent can see them, and file transfers report failures per file. A rejected
-  API key (`AuthenticationError`) or a machine the key may not use
-  (`PermissionDeniedError`) is raised instead, from every method.
 - Everything else boxd offers (snapshots, forks, egress allowlists, secrets,
   ports and HTTPS URLs) is on `backend.client`, the plain boxd SDK client.
+
+## Examples
+
+Each one runs against real boxd. They read the model from `LC_MODEL`
+(default `anthropic:claude-sonnet-5-5`; any LangChain chat model works, for
+example `google_genai:gemini-3.8-flash`).
+
+- [`examples/quickstart.py`](examples/quickstart.py): a Deep Agent writes and
+  runs code on a fresh machine, which is deleted afterwards.
+- [`examples/persistent_workspace.py`](examples/persistent_workspace.py): a
+  named machine the agent comes back to. Each run ends by hibernating it, and
+  the next run wakes it with its files intact.
+- [`examples/parallel_forks.py`](examples/parallel_forks.py): set a project up
+  once, fork the machine, and let two agents try two approaches in parallel.
+
+```bash
+pip install langchain-boxd langchain-anthropic
+export BOXD_API_KEY=... ANTHROPIC_API_KEY=...
+python examples/quickstart.py
+```
+
+## Errors
+
+The agent sees command failures; your code sees credential failures.
+
+| What happened | What you get |
+| --- | --- |
+| The command exited non-zero | `ExecuteResponse` with that exit code and the output |
+| The command ran past its timeout | boxd kills its whole process group; exit code `124` |
+| boxd failed to run the command (network, machine gone, ...) | `ExecuteResponse` with exit code `1` and `Error executing command (<type>): ...` as output, so the agent can see it |
+| A file upload or download failed | a per-file `error`: `file_not_found`, `is_directory`, `permission_denied` or `invalid_path`, else the boxd error text |
+| boxd rejected the API key | `boxd.AuthenticationError`, raised from every method |
+| The key may not use this machine | `boxd.PermissionDeniedError`, raised from every method |
+| A negative `timeout` | `ValueError` |
+| `create()`: the machine didn't accept commands within `ready_timeout` | `TimeoutError`; the backend deletes the machine first (if that fails too, `delete_after` still removes it) |
+
+## Limits
+
+| | Limit |
+| --- | --- |
+| Command timeout | 30 minutes by default (`timeout=`); `0` waits forever |
+| Output | stdout and stderr come back together (stdout, a newline, stderr), not truncated by this package |
+| Machine ready | `create()` waits up to 180 seconds (`ready_timeout=`); it usually takes about a second |
+| Machine size | 1, 2, 4 or 8 vCPUs with 4 GB of memory each, up to your organization's quota (`vcpu=` on `create()`) |
+| Machines per backend | one; fork with `backend.client.machines.fork(backend.id)` for more |
+| Standard tests | passes the `langchain-tests` sandbox suite against real boxd, except 7 tests that fail on any `BaseSandbox` with deepagents 0.7 (version skew between the two packages) |
+
+## How it works
+
+- `BoxdSandbox` subclasses Deep Agents' `BaseSandbox` and implements the three
+  methods it needs: `execute`, `upload_files` and `download_files`. The file
+  tools the agent uses (`ls`, `read`, `write`, `edit`, `glob`, `grep`) come
+  from the base class and run through `execute`.
+- `execute` calls the boxd SDK's `machines.exec`, as `bash -c '<command>'` in
+  `/home/boxd`. A machine that is asleep wakes on the first command.
+- `upload_files` and `download_files` use `machines.fs`, which writes as the
+  machine's user, creates missing parent directories and replaces a file by
+  a rename, so readers see the old contents or the new. boxd writes in place
+  only where a rename can't work (a file with several hard links, another
+  user's file, or a directory the `boxd` user can't write to).
+- `BoxdSandbox.create()` owns the machine and deletes it when the `with`
+  block ends. A backend made from an existing machine id never deletes it.
+- `BoxdProvider` is the same backend behind the `deepagents-code` provider
+  interface, registered through a package entry point.
 
 ## Development
 

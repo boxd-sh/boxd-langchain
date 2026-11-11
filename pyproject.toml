@@ -18,6 +18,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
 ]
 version = "0.0.1"
 requires-python = ">=3.11,<4.0"
@@ -78,6 +79,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "tests/**/*.py" = ["D", "S101", "S108", "SLF001", "PLR2004"]
+"examples/**/*.py" = ["D103", "T201", "INP001"]
 
 [tool.coverage.run]
 omit = ["tests/*"]

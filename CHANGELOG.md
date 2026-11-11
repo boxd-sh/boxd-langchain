@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.0.1
+## 0.0.1 (unreleased)
 
 Initial release.
 
@@ -16,3 +16,6 @@ Initial release.
 - Passes the `langchain-tests` `SandboxIntegrationTests` standard suite, apart
   from 7 tests that fail on any `BaseSandbox` with deepagents 0.7 (marked
   `xfail(strict=True)`).
+- Three examples (`examples/`): a quick start, a persistent workspace that
+  hibernates between runs, and two agents working on two forks in parallel.
+- Ships `py.typed`.
