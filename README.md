@@ -1,3 +1,5 @@
+![boxd: composable computers for LangChain agents](assets/banner.png)
+
 # langchain-boxd
 
 [boxd](https://boxd.sh?ref=langchain-boxd) sandbox integration for

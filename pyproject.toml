@@ -35,8 +35,8 @@ packages = ["langchain_boxd"]
 [project.urls]
 Homepage = "https://boxd.sh?ref=langchain-boxd"
 Documentation = "https://docs.boxd.sh?ref=langchain-boxd"
-Repository = "https://github.com/boxd-sh/langchain-boxd"
-Issues = "https://github.com/boxd-sh/langchain-boxd/issues"
+Repository = "https://github.com/boxd-sh/boxd-langchain"
+Issues = "https://github.com/boxd-sh/boxd-langchain/issues"
 
 [dependency-groups]
 test = [
