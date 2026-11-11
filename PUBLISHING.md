@@ -35,7 +35,7 @@ Nothing here is published yet.
    from it, so you test what users get. Check `dcode install langchain-boxd
    --package` once the package is on PyPI.
 
-5. Set the date in `CHANGELOG.md`. The first release ships `0.0.1` as it
+5. Set the date in `CHANGELOG.md`. The first release ships `0.1.0` as it
    stands in `pyproject.toml`; bump `version` there for every later release.
 
 6. Before the repo is public, switch the banner at the top of the README to
@@ -45,7 +45,7 @@ Nothing here is published yet.
 
    ```sh
    uv publish
-   git tag v0.0.1 && git push --tags
+   git tag v0.1.0 && git push --tags
    ```
 
 8. Submit the package through LangChain's integration listing form.
