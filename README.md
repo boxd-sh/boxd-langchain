@@ -1,8 +1,8 @@
 ![boxd: composable computers for LangChain agents](assets/banner.png)
 
-# langchain-boxd
+# boxd-langchain
 
-[boxd](https://boxd.sh?ref=langchain-boxd) sandbox integration for
+[boxd](https://boxd.sh?ref=boxd-langchain) sandbox integration for
 [Deep Agents](https://github.com/langchain-ai/deepagents). Because Deep Agents
 compiles to a LangGraph graph, this works across LangChain, LangGraph and Deep
 Agents.
@@ -14,11 +14,11 @@ It boots in about a second, and can be hibernated, snapshotted and forked.
 ## Install
 
 ```bash
-pip install langchain-boxd
-# or: uv add langchain-boxd
+pip install boxd-langchain
+# or: uv add boxd-langchain
 ```
 
-Create an API key at [app.boxd.sh/keys](https://app.boxd.sh/keys?ref=langchain-boxd)
+Create an API key at [app.boxd.sh/keys](https://app.boxd.sh/keys?ref=boxd-langchain)
 and export it:
 
 ```bash
@@ -36,7 +36,7 @@ Used as a context manager, it deletes the machine when the block ends.
 seconds even if your process dies first.
 
 ```python
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 with BoxdSandbox.create(delete_after=3600) as backend:
     result = backend.execute("python3 --version")
@@ -49,7 +49,7 @@ with BoxdSandbox.create(delete_after=3600) as backend:
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 with BoxdSandbox.create(delete_after=3600) as backend:
     agent = create_deep_agent(
@@ -79,7 +79,7 @@ run. Hibernate it between runs to stop paying for memory and CPU.
 ```python
 from boxd import Boxd
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 client = Boxd()  # reads BOXD_API_KEY
 machine = client.machines.create(labels={"app": "agent"})
@@ -99,7 +99,7 @@ Installing this package registers a `boxd` sandbox provider for the
 `deepagents-code` (`dcode`) terminal agent:
 
 ```bash
-dcode install langchain-boxd --package
+dcode install boxd-langchain --package
 export BOXD_API_KEY="bxd_..."
 dcode --sandbox boxd
 ```
@@ -122,9 +122,9 @@ replaces what the package registers, so it repeats the provider's
 
 ```toml
 [sandboxes.providers.boxd]
-class_path = "langchain_boxd.provider:BoxdProvider"
+class_path = "boxd_langchain.provider:BoxdProvider"
 working_dir = "/home/boxd"
-package = "langchain-boxd"
+package = "boxd-langchain"
 supports_snapshot_name = true
 
 [sandboxes.providers.boxd.params]
@@ -191,7 +191,7 @@ example `google_genai:gemini-3.8-flash`).
   once, fork the machine, and let two agents try two approaches in parallel.
 
 ```bash
-pip install langchain-boxd langchain-anthropic
+pip install boxd-langchain langchain-anthropic
 export BOXD_API_KEY=... ANTHROPIC_API_KEY=...
 python examples/quickstart.py
 ```
@@ -250,7 +250,7 @@ BOXD_API_KEY=bxd_... make integration_tests
 ```
 
 The integration tests create real machines (named `t-langchain-*`, labelled
-`langchain-boxd=integration-test`, each with a one-hour `delete_after`) and
+`boxd-langchain=integration-test`, each with a one-hour `delete_after`) and
 delete them again. They run the `langchain-tests` standard sandbox suite,
 lifecycle and error tests, and, when `ANTHROPIC_API_KEY` is set, a real Deep
 Agents run. They are skipped when `BOXD_API_KEY` is not set.

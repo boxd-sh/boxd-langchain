@@ -10,9 +10,9 @@ import pytest
 from boxd import Boxd
 from boxd.errors import AuthenticationError, NotFoundError
 
-from langchain_boxd import BoxdSandbox
-from langchain_boxd.provider import BoxdProvider
-from langchain_boxd.sandbox import TIMEOUT_EXIT_CODE
+from boxd_langchain import BoxdSandbox
+from boxd_langchain.provider import BoxdProvider
+from boxd_langchain.sandbox import TIMEOUT_EXIT_CODE
 from tests.integration_tests._live import (
     SAFETY_DELETE_AFTER,
     machine_labels,

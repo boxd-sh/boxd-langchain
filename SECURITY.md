@@ -5,7 +5,7 @@ Please don't report security problems in public issues.
 Report them privately through
 [GitHub's vulnerability reporting](https://github.com/boxd-sh/boxd-langchain/security/advisories/new),
 or email [contact@boxd.sh](mailto:contact@boxd.sh). Include what you found, how
-to reproduce it, and the version of `langchain-boxd` you use. We'll confirm we
+to reproduce it, and the version of `boxd-langchain` you use. We'll confirm we
 received it and keep you posted while we fix it.
 
 ## Supported versions
@@ -14,7 +14,7 @@ Fixes go into the latest release.
 
 ## Scope
 
-This repo holds the `langchain-boxd` package, its `deepagents-code` provider
+This repo holds the `boxd-langchain` package, its `deepagents-code` provider
 and the examples. Issues in boxd itself, such as the API or the machines, can
 go to the same addresses.
 

@@ -3,11 +3,11 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "langchain-boxd"
+name = "boxd-langchain"
 description = "boxd sandbox integration for Deep Agents"
 license = { text = "MIT" }
 readme = "README.md"
-authors = [{ name = "Azin" }]
+authors = [{ name = "boxd", email = "contact@boxd.sh" }]
 keywords = ["deepagents", "langchain", "sandbox", "boxd", "agents", "microvm"]
 classifiers = [
     "Intended Audience :: Developers",
@@ -28,14 +28,14 @@ dependencies = [
 ]
 
 [project.entry-points."deepagents_code.sandbox_providers"]
-boxd = "langchain_boxd.provider:BoxdProvider"
+boxd = "boxd_langchain.provider:BoxdProvider"
 
 [tool.hatch.build.targets.wheel]
-packages = ["langchain_boxd"]
+packages = ["boxd_langchain"]
 
 [project.urls]
-Homepage = "https://boxd.sh?ref=langchain-boxd"
-Documentation = "https://docs.boxd.sh?ref=langchain-boxd"
+Homepage = "https://boxd.sh?ref=boxd-langchain"
+Documentation = "https://docs.boxd.sh?ref=boxd-langchain"
 Repository = "https://github.com/boxd-sh/boxd-langchain"
 Issues = "https://github.com/boxd-sh/boxd-langchain/issues"
 

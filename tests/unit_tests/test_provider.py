@@ -7,8 +7,8 @@ import pytest
 from boxd.errors import AuthenticationError, NotFoundError
 from deepagents_code.integrations.sandbox_provider import SandboxNotFoundError
 
-from langchain_boxd import BoxdSandbox
-from langchain_boxd.provider import DEFAULT_COMMAND_TIMEOUT, BoxdProvider
+from boxd_langchain import BoxdSandbox
+from boxd_langchain.provider import DEFAULT_COMMAND_TIMEOUT, BoxdProvider
 from tests.unit_tests.fakes import FakeBoxd, FakeMachine
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ def fake(monkeypatch: pytest.MonkeyPatch) -> FakeBoxd:
         client.constructed_with.append(kwargs)  # type: ignore[attr-defined]
         return client
 
-    monkeypatch.setattr("langchain_boxd.provider.Boxd", make)
+    monkeypatch.setattr("boxd_langchain.provider.Boxd", make)
     return client
 
 
@@ -44,16 +44,16 @@ def test_metadata_does_not_need_credentials(monkeypatch: pytest.MonkeyPatch) -> 
     assert metadata.working_dir == "/home/boxd"
     assert metadata.supports_sandbox_id is True
     assert metadata.supports_snapshot_name is True
-    assert metadata.backend_module == "langchain_boxd"
+    assert metadata.backend_module == "boxd_langchain"
     assert metadata.install is not None
-    assert metadata.install.name == "langchain-boxd"
+    assert metadata.install.name == "boxd-langchain"
     assert metadata.install.kind == "package"
 
 
 def test_entry_point_loads_provider() -> None:
     entries = entry_points(group="deepagents_code.sandbox_providers")
     entry = next(item for item in entries if item.name == "boxd")
-    assert entry.value == "langchain_boxd.provider:BoxdProvider"
+    assert entry.value == "boxd_langchain.provider:BoxdProvider"
     assert entry.load() is BoxdProvider
 
 
@@ -173,7 +173,7 @@ def test_stopped_machine_is_polled_until_it_leaves_stopped(
 ) -> None:
     # `start` returns before the status changes; wait_until_ready would treat
     # a "stopped" status as final, so the provider polls first.
-    monkeypatch.setattr("langchain_boxd.provider._WAKE_POLL_INTERVAL", 0)
+    monkeypatch.setattr("boxd_langchain.provider._WAKE_POLL_INTERVAL", 0)
     machine = FakeMachine("vm-9", "my-box", "stopped")
     fake.machines.machines["vm-9"] = machine
     seen: list[str] = []
@@ -200,8 +200,8 @@ def test_stopped_machine_is_polled_until_it_leaves_stopped(
 def test_machine_that_never_wakes_times_out(
     fake: FakeBoxd, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr("langchain_boxd.provider._WAKE_POLL_INTERVAL", 0)
-    monkeypatch.setattr("langchain_boxd.provider.DEFAULT_READY_TIMEOUT", 0.05)
+    monkeypatch.setattr("boxd_langchain.provider._WAKE_POLL_INTERVAL", 0)
+    monkeypatch.setattr("boxd_langchain.provider.DEFAULT_READY_TIMEOUT", 0.05)
     fake.machines.machines["vm-9"] = FakeMachine("vm-9", "my-box", "hibernated")
     fake.machines.wake = lambda *_a, **_k: None  # type: ignore[method-assign]
     with pytest.raises(TimeoutError, match="did not wake up"):

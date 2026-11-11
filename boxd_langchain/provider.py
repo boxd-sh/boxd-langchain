@@ -2,7 +2,7 @@
 
 Registered under the ``deepagents_code.sandbox_providers`` entry point, so
 ``dcode --sandbox boxd`` creates (or reattaches to) a boxd machine. Importing
-this module needs ``deepagents-code``; ``langchain_boxd`` itself does not.
+this module needs ``deepagents-code``; ``boxd_langchain`` itself does not.
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ from deepagents_code.integrations.sandbox_provider import (
     SandboxProviderMetadata,
 )
 
-from langchain_boxd.sandbox import (
+from boxd_langchain.sandbox import (
     DEFAULT_READY_TIMEOUT,
     DEFAULT_TIMEOUT,
     DEFAULT_WORKDIR,
@@ -96,10 +96,10 @@ class BoxdProvider(SandboxProvider):
     _metadata = SandboxProviderMetadata(
         name="boxd",
         working_dir=DEFAULT_WORKDIR,
-        install=SandboxInstallHint(kind="package", name="langchain-boxd"),
+        install=SandboxInstallHint(kind="package", name="boxd-langchain"),
         supports_sandbox_id=True,
         supports_snapshot_name=True,
-        backend_module="langchain_boxd",
+        backend_module="boxd_langchain",
     )
 
     def __init__(self, *, resolve_env_var: EnvResolver | None = None) -> None:

@@ -36,7 +36,7 @@ PYTHON_FILES=.
 lint format: PYTHON_FILES=.
 lint_diff format_diff: PYTHON_FILES=$(shell git diff --name-only --diff-filter=d main 2>/dev/null | grep -E '\.py$$|\.ipynb$$' || true)
 lint_package: ## Lint only the package
-lint_package: PYTHON_FILES=langchain_boxd
+lint_package: PYTHON_FILES=boxd_langchain
 
 lint: ## Run linters and type checker
 lint lint_diff lint_package:
@@ -46,7 +46,7 @@ lint lint_diff lint_package:
 
 type: ## Run type checker
 type typecheck:
-	uv run --all-groups ty check langchain_boxd
+	uv run --all-groups ty check boxd_langchain
 
 format: ## Run code formatters
 format format_diff:

@@ -1,7 +1,7 @@
 """boxd sandbox backend implementation.
 
-[`BoxdSandbox`][langchain_boxd.sandbox.BoxdSandbox] runs a Deep Agents agent's
-shell commands and file operations inside a [boxd](https://boxd.sh?ref=langchain-boxd)
+[`BoxdSandbox`][boxd_langchain.sandbox.BoxdSandbox] runs a Deep Agents agent's
+shell commands and file operations inside a [boxd](https://boxd.sh?ref=boxd-langchain)
 machine: a full Ubuntu VM with a persistent disk.
 
 It subclasses [`BaseSandbox`][deepagents.backends.sandbox.BaseSandbox], so the
@@ -141,7 +141,7 @@ class BoxdSandbox(BaseSandbox):
 
     ```python
     from boxd import Boxd
-    from langchain_boxd import BoxdSandbox
+    from boxd_langchain import BoxdSandbox
 
     client = Boxd()  # reads BOXD_API_KEY
     machine = client.machines.create(labels={"app": "agent"})
@@ -154,7 +154,7 @@ class BoxdSandbox(BaseSandbox):
     Or let the backend create the machine and delete it when you are done:
 
     ```python
-    from langchain_boxd import BoxdSandbox
+    from boxd_langchain import BoxdSandbox
 
     with BoxdSandbox.create(delete_after=3600) as backend:
         print(backend.execute("python3 --version").output)

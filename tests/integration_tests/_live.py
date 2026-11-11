@@ -3,7 +3,7 @@
 The tests create real machines. They need ``BOXD_API_KEY`` and are skipped
 without it. Every machine gets a name starting with ``BOXD_TEST_NAME_PREFIX``
 (default ``t-langchain-``), the labels in ``BOXD_TEST_LABELS`` (default
-``langchain-boxd=integration-test``) and a one-hour ``delete_after`` timer, so a
+``boxd-langchain=integration-test``) and a one-hour ``delete_after`` timer, so a
 crashed run cleans up after itself.
 """
 
@@ -28,6 +28,6 @@ def machine_name(suffix: str) -> str:
 
 
 def machine_labels() -> dict[str, str]:
-    raw = os.environ.get("BOXD_TEST_LABELS", "langchain-boxd=integration-test")
+    raw = os.environ.get("BOXD_TEST_LABELS", "boxd-langchain=integration-test")
     pairs = (item.split("=", 1) for item in raw.split(",") if item)
     return {key.strip(): value.strip() for key, value in pairs}

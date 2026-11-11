@@ -11,7 +11,7 @@ import asyncio
 from _model import model
 from deepagents import create_deep_agent
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 SETUP = """
 mkdir -p /home/boxd/project && cd /home/boxd/project

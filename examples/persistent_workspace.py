@@ -15,7 +15,7 @@ from _model import model
 from boxd import Boxd, NotFoundError
 from deepagents import create_deep_agent
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 NAME = "langchain-workspace"
 client = Boxd()  # reads BOXD_API_KEY

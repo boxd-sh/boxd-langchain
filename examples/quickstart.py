@@ -9,7 +9,7 @@ anyway after an hour, in case the process dies first.
 from _model import model
 from deepagents import create_deep_agent
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 
 with BoxdSandbox.create(delete_after=3600) as backend:
     print(f"machine {backend.id} is ready")

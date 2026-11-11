@@ -9,7 +9,7 @@ import pytest
 from langchain_tests.integration_tests import SandboxIntegrationTests
 from packaging.version import Version
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 from tests.integration_tests._live import (
     SAFETY_DELETE_AFTER,
     machine_labels,

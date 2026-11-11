@@ -28,11 +28,11 @@ Nothing here is published yet.
    unzip -l dist/*.whl
    ```
 
-   The wheel holds `langchain_boxd/` with `py.typed`, and the entry point
+   The wheel holds `boxd_langchain/` with `py.typed`, and the entry point
    `deepagents_code.sandbox_providers: boxd`.
 
 4. Install the wheel in a clean virtualenv and run the README quick start
-   from it, so you test what users get. Check `dcode install langchain-boxd
+   from it, so you test what users get. Check `dcode install boxd-langchain
    --package` once the package is on PyPI.
 
 5. Set the date in `CHANGELOG.md`. The first release ships `0.1.0` as it

@@ -18,8 +18,8 @@ from boxd.errors import (
 )
 from deepagents.backends.sandbox import BaseSandbox
 
-from langchain_boxd import BoxdSandbox
-from langchain_boxd.sandbox import DEFAULT_WORKDIR, TIMEOUT_EXIT_CODE
+from boxd_langchain import BoxdSandbox
+from boxd_langchain.sandbox import DEFAULT_WORKDIR, TIMEOUT_EXIT_CODE
 from tests.unit_tests.fakes import FakeBoxd, FakeExecResult, FakeFiles, FakeFs
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ def test_default_client_reads_environment(monkeypatch: pytest.MonkeyPatch) -> No
             super().__init__()
             created.append(kwargs)
 
-    monkeypatch.setattr("langchain_boxd.sandbox.Boxd", RecordingBoxd)
+    monkeypatch.setattr("boxd_langchain.sandbox.Boxd", RecordingBoxd)
     backend = BoxdSandbox(machine_id="vm-env")
     assert created == [{}]
     backend.close()
@@ -434,7 +434,7 @@ def test_create_without_client_closes_its_own(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake = FakeBoxd()
-    monkeypatch.setattr("langchain_boxd.sandbox.Boxd", lambda: fake)
+    monkeypatch.setattr("boxd_langchain.sandbox.Boxd", lambda: fake)
     with BoxdSandbox.create() as backend:
         assert backend.client is fake
     assert fake.machines.deleted == ["vm-1"]
@@ -491,7 +491,7 @@ def test_create_failure_closes_own_client(monkeypatch: pytest.MonkeyPatch) -> No
         raise PermissionDeniedError(msg)
 
     fake.machines.create = refuse  # type: ignore[method-assign]
-    monkeypatch.setattr("langchain_boxd.sandbox.Boxd", lambda: fake)
+    monkeypatch.setattr("boxd_langchain.sandbox.Boxd", lambda: fake)
     with pytest.raises(PermissionDeniedError):
         BoxdSandbox.create()
     assert fake.closed is True

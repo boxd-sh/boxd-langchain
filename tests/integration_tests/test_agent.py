@@ -13,7 +13,7 @@ import pytest
 from deepagents import create_deep_agent
 from langchain_anthropic import ChatAnthropic
 
-from langchain_boxd import BoxdSandbox
+from boxd_langchain import BoxdSandbox
 from tests.integration_tests._live import (
     SAFETY_DELETE_AFTER,
     machine_labels,
